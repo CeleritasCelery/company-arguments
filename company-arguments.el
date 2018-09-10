@@ -5,7 +5,7 @@
 ;; Author: Troy Hinckley <troy.hinckley@gmail.com>
 ;; URL: https://github.com/CeleritasCelery/company-arguments
 ;; Version: 0.1.0
-;; Package-Requires: ((company "0.9.3") (cl-lib "0.5.0") (ample-regexps "0.1") (dash "2.12.0") (emacs "25"))
+;; Package-Requires: ((company "0.9.3") (cl-lib "0.5.0") (ample-regexps "0.1") (emacs "25"))
 
 ;; This file is not part of GNU Emacs.
 
@@ -32,7 +32,6 @@
 ;;; Code:
 
 (require 'company)
-(require 'dash)
 (require 'cl-lib)
 (require 'ample-regexps)
 
