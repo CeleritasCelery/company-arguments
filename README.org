@@ -1,0 +1,17 @@
+* company arguments
+
+This package is in the early stages of development, and there are surely edge cases that are not handled correctly. The current implementation is using =--help= and parsing the output. Here are some of limitation that are immediately apparent.
+
+- doesn't handle "old style" arguments (e.g. =-name=, =-dir=, =-depth=, etc)
+- doesn't support arguments bundling (i.e. transforming =-A=, =-B=, =-C=, into =-ABC=)
+- stuggles with case insensitive matching
+
+
+
+** improvement areas
+
+- handle argument bundling
+- provide default values for arguments that accept them (e.g. =--color=auto= =--color=never=)
+- using caching to improve performace (the backend is asynchronous, so it will never block, but some commands can still take a while to respond)
+- create a blacklist of commands that this backend can't handle (e.g. =git=, =find=, etc)
+- handle command aliases
