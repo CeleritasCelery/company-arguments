@@ -3,7 +3,7 @@
 ;; Copyright (C) 2017 by Troy Hinckley
 
 ;; Author: Troy Hinckley <troy.hinckley@gmail.com>
-;; URL: https://github.com/CeleritasCelery/company-async-files
+;; URL: https://github.com/CeleritasCelery/company-arguments
 ;; Version: 0.1.0
 ;; Package-Requires: ((company "0.9.3") (cl-lib "0.5.0") (ample-regexps "0.1") (dash "2.12.0") (emacs "25"))
 
@@ -24,11 +24,10 @@
 
 ;;; Commentary:
 
-;; Company backend for completing command line arguments.
-;; =company-async-files= provides the same completion as =company-files=,
-;; but asynchronously uses find in the background to get the candidates.
-;; This ensures that your user thread is never blocked by your completion
-;; backend, which is the way it should be.
+;; provide completion for command line arguments with company. uses
+;; the --help command to get all arguments and then parses that list.
+;; The annotation shows alternate arguments that are equivilent and
+;; the meta data provides the description.
 
 ;;; Code:
 
@@ -38,6 +37,7 @@
 (require 'ample-regexps)
 
 (defun company-arguments--get-command ()
+  "get the command at the start of the line"
   (save-excursion
     (back-to-indentation)
     (buffer-substring (point)
@@ -56,6 +56,8 @@
           t)))
 
 (defun company-arguments--candidates (callback prefix)
+  "use --help to get arguments that match PREFIX.
+When --help is parsed, call CALLBACK."
   (let ((command (company-arguments--get-command))
         (buffer (generate-new-buffer "company-arguments-command-output")))
     (set-process-sentinel (start-process "company-argments-candidates"
@@ -84,10 +86,15 @@
                    (optional "=" (1+ word))
                    (optional "]")))))
 
-(let ((buffer (get-buffer "pipe")))
-  (company-arguments--parse-help buffer))
-
 (defun company-arguments--parse-help (buffer)
+  "parse help BUFFER.
+command line argument data should be in one the
+following forms
+  -f, --foo    description
+  -f           description
+      --foo    description
+This function will return an alist of the form
+ (argument description alternate-form)"
   (with-current-buffer buffer
     (goto-char (point-min))
     (let (arguments)
@@ -101,18 +108,29 @@
         (let ((short (match-string 1))
               (long  (match-string 2))
               (desc  (match-string 3))
+              ;; get the rest of the description which might be on
+              ;; multiple lines
               (rest (cl-loop initially (forward-line)
                              while (looking-at (rx bol (>= 7 space)
                                                    (group-n 1 (1+ nonl))))
                              collect (match-string 1)
                              do (forward-line))))
           (setq desc (mapconcat 'identity (cons desc rest) " "))
+          ;; when two arguments are similar and right after one
+          ;; another, the help message will use the form "likewise,
+          ;; but <additional info>". Since the description for the
+          ;; arguments are displayed one at a time we replace
+          ;; "likewise" with the referenced description
           (when (string-prefix-p "likewise, " desc)
             (setq desc (replace-regexp-in-string (rx bos "likewise") (nth 1 (car arguments)) desc)))
           (when short
             (push (list short desc long) arguments))
           (when long
             (push (list long desc short) arguments))))
+      ;; Similar to the likewise fomr described above, the argument
+      ;; will sometimes use a form "like -<arg>, but" which refernces
+      ;; another argument description. We want to substitute this from
+      ;; with the actual descrption of the other argument.
       (cl-loop for (key desc alt) in arguments
                if (string-match (rx bos (group-n 1 "like " (group-n 2 "-" word)) ",") desc)
                collect (list key
@@ -124,13 +142,16 @@
                collect (list key desc alt)))))
 
 (defun company-arguments--post-completion (cand)
+  "remove the argument specifier from the end of the CAND.
+This would include something like \"=BLOCK\" or \"[=COLOR]\"."
   (when (string-match (rx (opt (group "[")) "=" (1+ nonl) eos) cand)
     (delete-backward-char (- (length (match-string 0 cand))
                              (if (match-string 1 cand) 0 1)))))
 
 ;;;###autoload
 (defun company-arguments (command &optional arg &rest ignored)
-  "Complete file paths using find. See `company's COMMAND ARG and IGNORED for details."
+  "Complete command line arguments using --help. See `company's
+COMMAND ARG and IGNORED for details."
   (interactive (list 'interactive))
   (cl-case command
     (interactive (company-begin-backend 'company-arguments))
