@@ -35,6 +35,9 @@
 (require 'cl-lib)
 (require 'ample-regexps)
 
+(defvar company-arguments--proc nil
+  "current running process")
+
 (defun company-arguments--get-command ()
   "get the command at the start of the line"
   (save-excursion
@@ -58,11 +61,17 @@
   "use --help to get arguments that match PREFIX.
 When --help is parsed, call CALLBACK."
   (let ((command (company-arguments--get-command))
-        (buffer (generate-new-buffer "company-arguments-command-output")))
-    (set-process-sentinel (start-process "company-argments-candidates"
-                                         buffer
-                                         (locate-file command (split-string (getenv "PATH") ":"))
-                                         "--help")
+        (buffer (get-buffer-create "*company-arguments-command-output*")))
+    (when (process-live-p company-arguments--proc)
+      (kill-process company-arguments--proc))
+    (with-current-buffer buffer
+      (erase-buffer))
+    (setq company-arguments--proc
+          (start-process "company-argments-candidates"
+                         buffer
+                         (locate-file command (split-string (getenv "PATH") ":"))
+                         "--help"))
+    (set-process-sentinel company-arguments--proc
                           (lambda (_ event)
                             (when (equal event "finished\n")
                               (funcall callback
@@ -72,9 +81,7 @@ When --help is parsed, call CALLBACK."
                                                  when (string-prefix-p prefix arg)
                                                  collect (progn (put-text-property 0 1 'description desc arg)
                                                                 (put-text-property 0 1 'alternate alt arg)
-                                                                arg))))
-                              (kill-buffer buffer))))))
-
+                                                                arg)))))))))
 
 (define-arx arg-rx
   '((spc (1+ space))
