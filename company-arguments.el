@@ -42,8 +42,9 @@
   "get the command at the start of the line"
   (save-excursion
     (back-to-indentation)
-    (buffer-substring (point)
-                      (1- (re-search-forward (rx (or space eol)))))))
+    (substitute-env-vars
+     (buffer-substring (point)
+                       (1- (re-search-forward (rx (or space eol))))))))
 
 (defun company-arguments--prefix ()
   "Get the arguments for the command at point"
